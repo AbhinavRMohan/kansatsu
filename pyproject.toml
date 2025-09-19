@@ -1,0 +1,54 @@
+# FILE: pyproject.toml
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kansatsu-observability"
+version = "0.1.0"
+authors = [
+  { name="Your Name", email="you@example.com" },
+]
+description = "A comprehensive observability toolkit for LLM applications with a live dashboard."
+readme = "README.md"
+license = { file="LICENSE" }
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: System :: Monitoring",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "opentelemetry-sdk",
+    "opentelemetry-api",
+    "requests",
+    "spacy>=3.0.0",
+    "dash",
+    "dash-bootstrap-components",
+    "plotly",
+    "pandas",
+    "flask"
+]
+
+# --- OPTIONAL DEPENDENCIES ---
+[project.optional-dependencies]
+test = [
+    "pytest",
+]
+examples = [
+    "google-cloud-aiplatform",
+    "vertexai"
+]
+# A 'dev' group that includes everything needed for development
+dev = ["kansatsu-observability[test,examples]"]
+
+
+[project.urls]
+"Homepage" = "https://github.com/your-username/kansatsu" # <-- CHANGE THIS
+"Bug Tracker" = "https://github.com/your-username/kansatsu/issues" # <-- CHANGE THIS
+
+[project.scripts]
+kansatsu-dashboard = "kansatsu.dashboard:main"

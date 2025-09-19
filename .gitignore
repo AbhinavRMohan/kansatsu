@@ -1,0 +1,19 @@
+# FILE: .gitignore
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+pip-wheel-metadata/
+.eggs/
+*.egg-info/
+dist/
+build/
+
+# IDEs
+.vscode/
+.idea/
