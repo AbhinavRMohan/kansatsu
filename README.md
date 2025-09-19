@@ -41,7 +41,7 @@ Using Kansatsu is a two-step process: launch the dashboard, then instrument your
 
 ### Step 1: Run the Dashboard
 
-Open a new terminal and run the following command. This will start a web server on `http://127.0.0.1:9000` by default.
+Open a new terminal and run the following command. This will start a web server on `http://127.0.0.1:9999` by default.
 
 ```bash
 kansatsu-dashboard
