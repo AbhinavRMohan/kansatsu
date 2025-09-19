@@ -4,7 +4,7 @@ import random
 from kansatsu import Kansatsu
 
 # 1. Initialize Kansatsu
-# It will automatically try to connect to the dashboard at http://127.0.0.1:9000/update
+# It will automatically try to connect to the dashboard at http://127.0.0.1:9999/update
 kansatsu = Kansatsu(service_name="my-llm-app", service_version="1.0.1")
 
 # A mock class to simulate an LLM API response
