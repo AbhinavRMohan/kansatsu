@@ -34,7 +34,7 @@ except Exception as e:
 obs = Kansatsu(
     service_name="math-agent",
     service_version="1.0",
-    dashboard_url="http://127.0.0.1:9000/update"
+    dashboard_url="http://127.0.0.1:9999/update"
 )
 
 # --- 2. The Tools: Simple Math Functions ---
