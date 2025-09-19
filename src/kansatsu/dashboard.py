@@ -219,7 +219,7 @@ def main():
     """Main function to run the Dash server."""
     parser = argparse.ArgumentParser(description="Run the Kansatsu Dashboard.")
     parser.add_argument("--host", type=str, default="127.0.0.1", help="Host IP to run the dashboard on.")
-    parser.add_argument("--port", type=int, default=9000, help="Port to run the dashboard on.")
+    parser.add_argument("--port", type=int, default=9999, help="Port to run the dashboard on.")
     args = parser.parse_args()
     
     print(f"💮 Starting Kansatsu Dashboard at http://{args.host}:{args.port}")
