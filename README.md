@@ -23,8 +23,7 @@ Kansatsu (観察, Japanese for "observation") is a lightweight, end-to-end obser
     You can install the library directly from your GitHub repository using `pip`.
 
     ```bash
-    # Replace with your GitHub username and repository name
-    pip install git+https://github.com/your-username/kansatsu.git
+    pip install git+https://github.com/AbhinavRMohan/kansatsu.git
     ```
 
 2.  **Download SpaCy Model**
