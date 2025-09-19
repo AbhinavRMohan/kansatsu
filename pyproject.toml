@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 name = "kansatsu-observability"
 version = "0.2.0"
 authors = [
-  { name="Your Name", email="you@example.com" },
+  { name="Abhinav R Mohan", email="abhimohan6066@gmail.com" },
 ]
 description = "A comprehensive observability toolkit for LLM applications with a live dashboard."
 readme = "README.md"
@@ -47,8 +47,8 @@ dev = ["kansatsu-observability[test,examples]"]
 
 
 [project.urls]
-"Homepage" = "https://github.com/your-username/kansatsu" # <-- CHANGE THIS
-"Bug Tracker" = "https://github.com/your-username/kansatsu/issues" # <-- CHANGE THIS
+"Homepage" = "https://github.com/AbhinavRMohan/kansatsu" # <-- CHANGE THIS
+"Bug Tracker" = "https://github.com/AbhinavRMohan/kansatsu/issues" # <-- CHANGE THIS
 
 [project.scripts]
 kansatsu-dashboard = "kansatsu.dashboard:main"
