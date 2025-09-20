@@ -8,7 +8,7 @@ import re
 import time
 from typing import Dict, Any, Optional
 
-# Our observability module
+# The observability module
 from kansatsu import Kansatsu
 
 # Third-party libraries for this example
