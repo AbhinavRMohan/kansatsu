@@ -219,7 +219,7 @@ def update_metrics(n):
 
 def main():
     """Main function to run the Dash server."""
-    parser = argparse.ArgumentParser(description="Run the Kansatsu Dashboard.")
+    parser = argparse.ArgumentParser(description="Run the Kansatsu Dashboard.", add_help = False)
 
     parser.add_argument("--version", action = "store_true", help = "Show the version number and exit")
     parser.add_argument("--help", action = "store_true", help = "Show the link to the README and exit")
