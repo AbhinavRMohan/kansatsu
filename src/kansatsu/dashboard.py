@@ -12,6 +12,8 @@ from collections import deque
 from datetime import datetime
 import argparse
 import logging
+import sys
+from . import __version__
 
 # --- Data Storage ---
 data_lock = threading.Lock()
@@ -218,11 +220,23 @@ def update_metrics(n):
 def main():
     """Main function to run the Dash server."""
     parser = argparse.ArgumentParser(description="Run the Kansatsu Dashboard.")
+
+    parser.add_argument("--version", action = "store_true", help = "Show the version number and exit")
+    parser.add_argument("--help", action = "store_true", help = "Show the link to the README and exit")
+    
     parser.add_argument("--host", type=str, default="127.0.0.1", help="Host IP to run the dashboard on.")
     parser.add_argument("--port", type=int, default=9999, help="Port to run the dashboard on.")
     args = parser.parse_args()
+
+    if args.version:
+        print(f"kansatsu version {__version__}")
+        sys.exit(0)
+
+    if args.help:
+        print(f"💮 Visit https://github.com/AbhinavRMohan/kansatsu/blob/main/README.md to get started 💮")
+        sys.exit(0)
     
-    print(f"💮 Starting Kansatsu Dashboard at http://{args.host}:{args.port}")
+    print(f"💮 Starting Kansatsu Dashboard at http://{args.host}:{args.port}\n\ncommands:\n* kansatsu-dashboard --version\nkansatsu-dashboard --help")
     app.run(host=args.host, port=args.port)
 
 if __name__ == '__main__':
