@@ -42,13 +42,13 @@ examples = [
     "google-cloud-aiplatform",
     "vertexai"
 ]
-# A 'dev' group that includes everything needed for development
+
 dev = ["kansatsu-observability[test,examples]"]
 
 
 [project.urls]
-"Homepage" = "https://github.com/AbhinavRMohan/kansatsu" # <-- CHANGE THIS
-"Bug Tracker" = "https://github.com/AbhinavRMohan/kansatsu/issues" # <-- CHANGE THIS
+"Homepage" = "https://github.com/AbhinavRMohan/kansatsu" 
+"Bug Tracker" = "https://github.com/AbhinavRMohan/kansatsu/issues" 
 
 [project.scripts]
 kansatsu-dashboard = "kansatsu.dashboard:main"
