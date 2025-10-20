@@ -213,45 +213,33 @@ class Kansatsu:
                         result = func(*args, **kwargs)
                         span.set_status(Status(StatusCode.OK))
     
-                        # --- Track LLM token usage if requested ---
                         if track_tokens:
                             prompt_tokens = completion_tokens = total_tokens = 0
-                            usage = None
+                            usage = getattr(result, "usage", None)
     
-                            # 1. Gemini / Vertex AI style
+                            # --- 1️⃣ Gemini / Vertex AI ---
                             if hasattr(result, "usage_metadata"):
-                                usage = result.usage_metadata
-                                prompt_tokens = getattr(usage, "prompt_token_count", 0)
-                                completion_tokens = getattr(usage, "candidates_token_count", 0)
-                                total_tokens = getattr(usage, "total_token_count", prompt_tokens + completion_tokens)
+                                usage_meta = result.usage_metadata
+                                prompt_tokens = getattr(usage_meta, "prompt_token_count", 0)
+                                completion_tokens = getattr(usage_meta, "candidates_token_count", 0)
+                                total_tokens = getattr(usage_meta, "total_token_count", prompt_tokens + completion_tokens)
     
-                            # 2. OpenAI object style (result.usage is object or dict)
-                            elif hasattr(result, "usage"):
-                                usage = result.usage
-                                if isinstance(usage, dict):
-                                    prompt_tokens = usage.get("prompt_tokens", 0)
-                                    completion_tokens = usage.get("completion_tokens", 0)
-                                    total_tokens = usage.get("total_tokens", prompt_tokens + completion_tokens)
-                                else:
-                                    prompt_tokens = getattr(usage, "prompt_tokens", 0)
-                                    completion_tokens = getattr(usage, "completion_tokens", 0)
-                                    total_tokens = getattr(usage, "total_tokens", prompt_tokens + completion_tokens)
+                            # --- 2️⃣ OpenAI (new & old SDK) ---
+                            elif isinstance(usage, dict):
+                                prompt_tokens = usage.get("prompt_tokens", 0)
+                                completion_tokens = usage.get("completion_tokens", 0)
+                                total_tokens = usage.get("total_tokens", prompt_tokens + completion_tokens)
+                            elif usage:
+                                prompt_tokens = getattr(usage, "prompt_tokens", 0)
+                                completion_tokens = getattr(usage, "completion_tokens", 0)
+                                total_tokens = getattr(usage, "total_tokens", prompt_tokens + completion_tokens)
     
-                            # 3. Dict-style result with "usage" key
-                            elif isinstance(result, dict) and "usage" in result:
-                                usage = result["usage"]
-                                if isinstance(usage, dict):
-                                    prompt_tokens = usage.get("prompt_tokens", 0)
-                                    completion_tokens = usage.get("completion_tokens", 0)
-                                    total_tokens = usage.get("total_tokens", prompt_tokens + completion_tokens)
-    
-                            # 4. Anthropic style or custom keys
-                            elif hasattr(result, "input_tokens") or (isinstance(result, dict) and "input_tokens" in result):
-                                prompt_tokens = getattr(result, "input_tokens", result.get("input_tokens", 0))
-                                completion_tokens = getattr(result, "output_tokens", result.get("output_tokens", 0))
+                            # --- 3️⃣ Anthropic / other LLMs ---
+                            elif hasattr(result, "input_tokens") or (isinstance(usage, dict) and "input_tokens" in usage):
+                                prompt_tokens = getattr(result, "input_tokens", usage.get("input_tokens", 0))
+                                completion_tokens = getattr(result, "output_tokens", usage.get("output_tokens", 0))
                                 total_tokens = prompt_tokens + completion_tokens
     
-                            # Log token usage if any tokens were recorded
                             if total_tokens > 0:
                                 self.log_method_llm_usage(_span_name, prompt_tokens, completion_tokens, total_tokens)
                                 span.set_attributes({
@@ -262,7 +250,7 @@ class Kansatsu:
     
                         # Log output if requested
                         if log_io:
-                            output_text = result.text if hasattr(result, 'text') else str(result)
+                            output_text = getattr(result, 'text', str(result))
                             span.add_event("function_output", {"output": output_text[:1000]})
     
                         return result
@@ -277,7 +265,6 @@ class Kansatsu:
                         raise
     
                     finally:
-                        # Log method performance
                         duration_ms = (time.perf_counter() - start_time) * 1000
                         self.log_method_performance(_span_name, duration_ms)
                         span.set_attribute("duration.ms", duration_ms)
