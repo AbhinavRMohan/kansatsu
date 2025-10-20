@@ -1,13 +1,16 @@
 # FILE: src/kansatsu/dashboard.py
 
 import dash
-from dash import dcc, html, dash_table, Input, Output
+from dash import dcc, html, dash_table, Input, Output, State
 import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
 from flask import Flask, request, jsonify
 import threading
+import time
+import pandas as pd
 from collections import deque
 from datetime import datetime
+import argparse
 import logging
 import sys
 from . import __version__
@@ -27,23 +30,18 @@ app_data = {
 # --- Flask Server & Dash App Initialization ---
 server = Flask(__name__)
 app = dash.Dash(__name__, server=server, external_stylesheets=[dbc.themes.DARKLY])
-logging.getLogger('werkzeug').setLevel(logging.ERROR)
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR) # Suppress noisy Flask logs
 
 # --- Helper Functions ---
 def get_default_live_graph_data():
-    return {'timestamps': deque(maxlen=MAX_GRAPH_POINTS),
-            'calls': deque(maxlen=MAX_GRAPH_POINTS),
-            'tokens': deque(maxlen=MAX_GRAPH_POINTS)}
+    return {
+        'timestamps': deque(maxlen=MAX_GRAPH_POINTS),
+        'calls': deque(maxlen=MAX_GRAPH_POINTS),
+        'tokens': deque(maxlen=MAX_GRAPH_POINTS),
+    }
 
-def create_metric_card(title, value_id):
-    return dbc.Card(
-        dbc.CardBody([html.H4(title, className="card-title"),
-                      html.H2("0", id=value_id, className="card-text fw-bold")]),
-        className="text-center m-2",
-        style={"border": "2px solid #444", "borderRadius": "15px"}
-    )
-
-# --- API Endpoint to Receive Metrics ---
+# --- API Endpoint to Receive Data ---
 @server.route('/update', methods=['POST'])
 def update_data():
     payload = request.json
@@ -52,71 +50,83 @@ def update_data():
         if update_type == "method_performance":
             name = payload["name"]
             duration = payload["duration_ms"]
-            app_data["general_stats"]["total_calls"] += 1
             if name not in app_data["method_details"]:
                 app_data["method_details"][name] = {"calls": 0, "total_duration_ms": 0.0, "total_tokens": 0}
             if name not in app_data["live_graphs"]:
                 app_data["live_graphs"][name] = get_default_live_graph_data()
             app_data["method_details"][name]["calls"] += 1
             app_data["method_details"][name]["total_duration_ms"] += duration
+            app_data["general_stats"]["total_calls"] += 1
             app_data["live_graphs"][name]['timestamps'].append(datetime.now())
             app_data["live_graphs"][name]['calls'].append(1)
             app_data["live_graphs"][name]['tokens'].append(0)
-
         elif update_type == "method_llm_usage":
             name = payload["name"]
-            tokens = payload.get("tokens", {"prompt": 0, "completion": 0, "total": 0})
-            app_data["llm_usage"]["prompt_tokens"] += tokens.get("prompt", 0)
-            app_data["llm_usage"]["completion_tokens"] += tokens.get("completion", 0)
-            app_data["llm_usage"]["total_tokens"] += tokens.get("total", 0)
+            tokens = payload["tokens"]
             if name not in app_data["method_details"]:
                 app_data["method_details"][name] = {"calls": 0, "total_duration_ms": 0.0, "total_tokens": 0}
-            app_data["method_details"][name]["total_tokens"] += tokens.get("total", 0)
+            app_data["method_details"][name]["total_tokens"] += tokens["total"]
+            app_data["llm_usage"]["prompt_tokens"] += tokens["prompt"]
+            app_data["llm_usage"]["completion_tokens"] += tokens["completion"]
+            app_data["llm_usage"]["total_tokens"] += tokens["total"]
             if name in app_data["live_graphs"] and len(app_data["live_graphs"][name]['tokens']) > 0:
-                app_data["live_graphs"][name]['tokens'][-1] = tokens.get("total", 0)
-
+                app_data["live_graphs"][name]['tokens'][-1] = tokens["total"]
         elif update_type == "interaction_time":
             app_data["general_stats"]["interaction_count"] += 1
-            app_data["general_stats"]["total_interaction_time_ms"] += payload.get("duration_ms", 0)
-
+            app_data["general_stats"]["total_interaction_time_ms"] += payload["duration_ms"]
         elif update_type == "quality_feedback":
-            score = payload.get("score")
-            if score is not None:
-                app_data["quality_rai"]["quality_scores"].append(score)
-
+            app_data["quality_rai"]["quality_scores"].append(payload["score"])
         elif update_type == "rai_alert":
-            alert = payload.get("alert")
-            if alert:
-                app_data["quality_rai"]["rai_alerts"].append(alert)
-
+            app_data["quality_rai"]["rai_alerts"].append(payload.get("alert"))
         elif update_type == "error":
             app_data["general_stats"]["errors"] += 1
-
         elif update_type == "session_end":
             app_data["session_ended"] = True
-
     return jsonify(success=True)
 
 # --- App Layout ---
+def create_metric_card(title, value_id):
+    return dbc.Card(
+        dbc.CardBody([
+            html.H4(title, className="card-title"),
+            html.H2("0", id=value_id, className="card-text fw-bold"),
+        ]),
+        className="text-center m-2",
+        style={"border": "2px solid #444", "borderRadius": "15px"}
+    )
+
 app.layout = dbc.Container([
-    dcc.Interval(id='interval-component', interval=1000, n_intervals=0),
+    dcc.Interval(id='interval-component', interval=1*1000, n_intervals=0),
     html.H1("💮 Kansatsu Dashboard", className="text-center my-4"),
     html.H3("💹 General Stats"),
-    dbc.Row([dbc.Col(create_metric_card("Total Monitored Calls", "total-calls-value")),
-             dbc.Col(create_metric_card("Total Errors", "total-errors-value")),
-             dbc.Col(create_metric_card("Avg Interaction Time (ms)", "avg-interaction-time-value"))]),
+    dbc.Row([
+        dbc.Col(create_metric_card("Total Monitored Calls", "total-calls-value")),
+        dbc.Col(create_metric_card("Total Errors", "total-errors-value")),
+        dbc.Col(create_metric_card("Avg Interaction Time (ms)", "avg-interaction-time-value")),
+    ]),
     html.Hr(),
     html.H3("🧠 LLM Usage"),
-    dbc.Row([dbc.Col(create_metric_card("Prompt Tokens", "prompt-tokens-value")),
-             dbc.Col(create_metric_card("Completion Tokens", "completion-tokens-value")),
-             dbc.Col(create_metric_card("Total Tokens", "total-tokens-value"))]),
+    dbc.Row([
+        dbc.Col(create_metric_card("Prompt Tokens", "prompt-tokens-value")),
+        dbc.Col(create_metric_card("Completion Tokens", "completion-tokens-value")),
+        dbc.Col(create_metric_card("Total Tokens", "total-tokens-value")),
+    ]),
     html.Hr(),
     html.H3("📜 Quality & Responsible AI"),
-    dbc.Row([dbc.Col(create_metric_card("Average User Quality Score", "avg-quality-score-value")),
-             dbc.Col(create_metric_card("PII/PHI AI Alerts", "rai-alerts-value"))]),
-    html.Div(dbc.Card(dbc.CardBody([html.H5("👺 PII/PHI Alert Details:", className="card-title text-danger"),
-                                   html.Ul(id='rai-alert-details-list', className="mb-0")]),
-                      ), id='rai-alert-details-card', style={'display': 'none'}),
+    dbc.Row([
+        dbc.Col(create_metric_card("Average User Quality Score", "avg-quality-score-value")),
+        dbc.Col(create_metric_card("PII/PHI AI Alerts", "rai-alerts-value")),
+    ]),
+    html.Div(
+        dbc.Card(
+            dbc.CardBody([
+                html.H5("👺 PII/PHI Alert Details:", className="card-title text-danger"),
+                html.Ul(id='rai-alert-details-list', className="mb-0")
+            ], style={'maxHeight': '300px', 'overflowY': 'auto'}),
+        ),
+        id='rai-alert-details-card',
+        style={'display': 'none'}
+    ),
     html.Hr(),
     html.H3("🔴 Live Method Activity"),
     html.Div(id='live-graphs-container'),
@@ -125,7 +135,7 @@ app.layout = dbc.Container([
     html.Div(id='final-table-container')
 ], fluid=True)
 
-# --- Callbacks ---
+# --- Callbacks to Update the UI ---
 @app.callback(
     [
         Output('total-calls-value', 'children'),
@@ -148,16 +158,14 @@ def update_metrics(n):
         gs = app_data["general_stats"]
         llm = app_data["llm_usage"]
         qr = app_data["quality_rai"]
-
         avg_interaction_time = (gs["total_interaction_time_ms"] / gs["interaction_count"]) if gs["interaction_count"] > 0 else 0
         avg_quality_score = (sum(qr["quality_scores"]) / len(qr["quality_scores"])) if qr["quality_scores"] else 0
-
-        # Live graphs
         graph_children = []
         for name, data in app_data["live_graphs"].items():
             fig = go.Figure()
-            fig.add_trace(go.Bar(x=list(data['timestamps']), y=list(data['calls']), name='Calls', marker_color='cyan'))
-            fig.add_trace(go.Bar(x=list(data['timestamps']), y=list(data['tokens']), name='Tokens', marker_color='orange', yaxis='y2'))
+            timestamps = list(data['timestamps'])
+            fig.add_trace(go.Bar(x=timestamps, y=list(data['calls']), name='Calls', marker_color='cyan'))
+            fig.add_trace(go.Bar(x=timestamps, y=list(data['tokens']), name='Tokens', marker_color='orange', yaxis='y2'))
             fig.update_layout(
                 title=f'Activity for: {name}',
                 template='plotly_dark',
@@ -168,8 +176,6 @@ def update_metrics(n):
                 legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01)
             )
             graph_children.append(dcc.Graph(figure=fig))
-
-        # Final table
         table_children = []
         if app_data["session_ended"]:
             table_data = []
@@ -191,40 +197,47 @@ def update_metrics(n):
                     style_header={'fontWeight': 'bold', 'border': '1px solid pink'},
                     style_data={'border': '1px solid grey'},
                 ))
-
-        # RAI alert list
         rai_alerts = qr.get("rai_alerts", [])
+        rai_alert_count = len(rai_alerts)
         alert_list_items = []
-        for alert in rai_alerts:
-            if alert:
-                alert_list_items.append(html.Li([html.Strong(f"{alert.get('type', 'N/A')}: "),
-                                                html.Span(f"{alert.get('details', 'No details')}")],
-                                               className="text-warning"))
-        card_style = {'display': 'block', 'marginTop': '15px'} if alert_list_items else {'display': 'none'}
-
-        return (f"{gs['total_calls']}", f"{gs['errors']}", f"{avg_interaction_time:.0f}",
-                f"{llm['prompt_tokens']}", f"{llm['completion_tokens']}", f"{llm['total_tokens']}",
-                f"{avg_quality_score:.2f}", f"{len(alert_list_items)}", graph_children, table_children,
-                card_style, alert_list_items)
+        if rai_alert_count > 0:
+            for alert in rai_alerts:
+                if alert:
+                    alert_list_items.append(
+                        html.Li([
+                            html.Strong(f"{alert.get('type', 'N/A')}: "),
+                            html.Span(f"{alert.get('details', 'No details')}")
+                        ], className="text-warning")
+                    )
+        card_style = {'display': 'block', 'marginTop': '15px'} if rai_alert_count > 0 else {'display': 'none'}
+        return (
+            f"{gs['total_calls']}", f"{gs['errors']}", f"{avg_interaction_time:.0f}",
+            f"{llm['prompt_tokens']}", f"{llm['completion_tokens']}", f"{llm['total_tokens']}",
+            f"{avg_quality_score:.2f}", f"{rai_alert_count}", graph_children, table_children,
+            card_style, alert_list_items
+        )
 
 def main():
-    import argparse
-    parser = argparse.ArgumentParser(description="Run the Kansatsu Dashboard.", add_help=False)
-    parser.add_argument("--version", action="store_true", help="Show version number and exit")
-    parser.add_argument("--help", action="store_true", help="Show README link and exit")
-    parser.add_argument("--host", type=str, default="127.0.0.1", help="Host IP to run dashboard")
-    parser.add_argument("--port", type=int, default=9999, help="Port to run dashboard")
+    """Main function to run the Dash server."""
+    parser = argparse.ArgumentParser(description="Run the Kansatsu Dashboard.", add_help = False)
+
+    parser.add_argument("--version", action = "store_true", help = "Show the version number and exit")
+    parser.add_argument("--help", action = "store_true", help = "Show the link to the README and exit")
+    
+    parser.add_argument("--host", type=str, default="127.0.0.1", help="Host IP to run the dashboard on.")
+    parser.add_argument("--port", type=int, default=9999, help="Port to run the dashboard on.")
     args = parser.parse_args()
 
     if args.version:
         print(f"kansatsu version {__version__}")
         sys.exit(0)
-    if args.help:
-        print("💮 Visit https://github.com/AbhinavRMohan/kansatsu/blob/main/README.md 💮")
-        sys.exit(0)
 
-    print(f"💮 Starting Kansatsu Dashboard at http://{args.host}:{args.port}")
+    if args.help:
+        print(f"💮 Visit https://github.com/AbhinavRMohan/kansatsu/blob/main/README.md to get started 💮")
+        sys.exit(0)
+    
+    print(f"💮 Starting Kansatsu Dashboard at http://{args.host}:{args.port}\n\ncommands:\n* kansatsu-dashboard --version\nkansatsu-dashboard --help")
     app.run(host=args.host, port=args.port)
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
