@@ -210,22 +210,34 @@ class Kansatsu:
                         result = func(*args, **kwargs)
                         span.set_status(Status(StatusCode.OK))
                         if track_tokens:
-                            prompt_tokens, completion_tokens, total_tokens = 0, 0, 0
-                            if hasattr(result, 'usage_metadata'):
+                            prompt_tokens = completion_tokens = total_tokens = 0
+                            usage = getattr(result, "usage", None)
+                        
+                            # --- Gemini / Vertex AI ---
+                            if hasattr(result, "usage_metadata"):
                                 usage = result.usage_metadata
-                                prompt_tokens = usage.prompt_token_count
-                                completion_tokens = usage.candidates_token_count
-                                total_tokens = usage.total_token_count
-                            elif hasattr(result, 'usage') and hasattr(result.usage, 'prompt_tokens'):
-                                usage = result.usage
-                                prompt_tokens = usage.prompt_tokens
-                                completion_tokens = usage.completion_tokens
-                                total_tokens = usage.total_tokens
-                            elif hasattr(result, 'usage') and hasattr(result.usage, 'input_tokens'):
-                                usage = result.usage
-                                prompt_tokens = usage.input_tokens
-                                completion_tokens = usage.output_tokens
+                                prompt_tokens = getattr(usage, "prompt_token_count", 0)
+                                completion_tokens = getattr(usage, "candidates_token_count", 0)
+                                total_tokens = getattr(usage, "total_token_count", prompt_tokens + completion_tokens)
+                        
+                            # --- OpenAI object style ---
+                            elif hasattr(usage, "prompt_tokens"):
+                                prompt_tokens = getattr(usage, "prompt_tokens", 0)
+                                completion_tokens = getattr(usage, "completion_tokens", 0)
+                                total_tokens = getattr(usage, "total_tokens", prompt_tokens + completion_tokens)
+                        
+                            # --- OpenAI dict style ---
+                            elif isinstance(usage, dict):
+                                prompt_tokens = usage.get("prompt_tokens", 0)
+                                completion_tokens = usage.get("completion_tokens", 0)
+                                total_tokens = usage.get("total_tokens", prompt_tokens + completion_tokens)
+                        
+                            # --- Anthropic or others (input/output fields) ---
+                            elif hasattr(usage, "input_tokens") or (isinstance(usage, dict) and "input_tokens" in usage):
+                                prompt_tokens = getattr(usage, "input_tokens", usage.get("input_tokens", 0))
+                                completion_tokens = getattr(usage, "output_tokens", usage.get("output_tokens", 0))
                                 total_tokens = prompt_tokens + completion_tokens
+                        
                             if total_tokens > 0:
                                 self.log_method_llm_usage(_span_name, prompt_tokens, completion_tokens, total_tokens)
                                 span.set_attributes({
@@ -233,6 +245,7 @@ class Kansatsu:
                                     "llm.usage.completion_tokens": completion_tokens,
                                     "llm.usage.total_tokens": total_tokens,
                                 })
+
                         if log_io:
                             output_text = result.text if hasattr(result, 'text') else str(result)
                             span.add_event("function_output", {"output": output_text[:1000]})
