@@ -213,18 +213,31 @@ class Kansatsu:
                         result = func(*args, **kwargs)
                         span.set_status(Status(StatusCode.OK))
     
+                        # --- Track LLM tokens ---
                         if track_tokens:
                             prompt_tokens = completion_tokens = total_tokens = 0
                             usage = getattr(result, "usage", None)
     
-                            # --- 1️⃣ Gemini / Vertex AI ---
-                            if hasattr(result, "usage_metadata"):
-                                usage_meta = result.usage_metadata
-                                prompt_tokens = getattr(usage_meta, "prompt_token_count", 0)
-                                completion_tokens = getattr(usage_meta, "candidates_token_count", 0)
-                                total_tokens = getattr(usage_meta, "total_token_count", prompt_tokens + completion_tokens)
+                            # GPT-4o-mini / OpenAI Chat Completions
+                            if hasattr(result, "choices") and isinstance(result.choices, list):
+                                # Extract text for logging/output
+                                chat_text = ""
+                                for choice in result.choices:
+                                    msg = getattr(choice, "message", None)
+                                    if msg:
+                                        chat_text += msg.content
+                                # Usage
+                                if usage:
+                                    prompt_tokens = usage.get("prompt_tokens", 0)
+                                    completion_tokens = usage.get("completion_tokens", 0)
+                                    total_tokens = usage.get("total_tokens", prompt_tokens + completion_tokens)
+                                elif hasattr(result, "usage_metadata"):
+                                    usage_meta = result.usage_metadata
+                                    prompt_tokens = getattr(usage_meta, "prompt_token_count", 0)
+                                    completion_tokens = getattr(usage_meta, "candidates_token_count", 0)
+                                    total_tokens = getattr(usage_meta, "total_token_count", prompt_tokens + completion_tokens)
     
-                            # --- 2️⃣ OpenAI (new & old SDK) ---
+                            # Fallback to previous logic
                             elif isinstance(usage, dict):
                                 prompt_tokens = usage.get("prompt_tokens", 0)
                                 completion_tokens = usage.get("completion_tokens", 0)
@@ -233,12 +246,6 @@ class Kansatsu:
                                 prompt_tokens = getattr(usage, "prompt_tokens", 0)
                                 completion_tokens = getattr(usage, "completion_tokens", 0)
                                 total_tokens = getattr(usage, "total_tokens", prompt_tokens + completion_tokens)
-    
-                            # --- 3️⃣ Anthropic / other LLMs ---
-                            elif hasattr(result, "input_tokens") or (isinstance(usage, dict) and "input_tokens" in usage):
-                                prompt_tokens = getattr(result, "input_tokens", usage.get("input_tokens", 0))
-                                completion_tokens = getattr(result, "output_tokens", usage.get("output_tokens", 0))
-                                total_tokens = prompt_tokens + completion_tokens
     
                             if total_tokens > 0:
                                 self.log_method_llm_usage(_span_name, prompt_tokens, completion_tokens, total_tokens)
@@ -250,7 +257,14 @@ class Kansatsu:
     
                         # Log output if requested
                         if log_io:
-                            output_text = getattr(result, 'text', str(result))
+                            output_text = getattr(result, 'text', None)
+                            if not output_text and hasattr(result, "choices"):
+                                output_text = ""
+                                for choice in result.choices:
+                                    msg = getattr(choice, "message", None)
+                                    if msg:
+                                        output_text += getattr(msg, "content", "")
+                            output_text = output_text or str(result)
                             span.add_event("function_output", {"output": output_text[:1000]})
     
                         return result
