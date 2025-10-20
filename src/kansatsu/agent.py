@@ -237,7 +237,13 @@ class Kansatsu:
                                 prompt_tokens = getattr(usage, "input_tokens", usage.get("input_tokens", 0))
                                 completion_tokens = getattr(usage, "output_tokens", usage.get("output_tokens", 0))
                                 total_tokens = prompt_tokens + completion_tokens
-                        
+
+                            elif hasattr(result, 'usage') and isinstance(result.usage, dict):
+                                usage = result.usage
+                                prompt_tokens = usage.get('prompt_tokens', 0)
+                                completion_tokens = usage.get('completion_tokens', 0)
+                                total_tokens = usage.get('total_tokens', prompt_tokens + completion_tokens)
+
                             if total_tokens > 0:
                                 self.log_method_llm_usage(_span_name, prompt_tokens, completion_tokens, total_tokens)
                                 span.set_attributes({
