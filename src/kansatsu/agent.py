@@ -302,9 +302,9 @@ class Kansatsu:
                 span.add_event("rai_alert", {"type": pii_type, "match_text": redacted_text})
 
         simple_regex_patterns = {
-            "SSN": re.compile(r'\b\d{}-\d{}-\d{}\b'),
+            "SSN": re.compile(r'\b\d{3}-\d{2}-\d{3}\b'),
             "EMAIL": re.compile(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'),
-            "PHONE_NUMBER_US": re.compile(r'\b\(?\d{}\)?[-.\s]?\d{}[-.\s]?\d{}\b'),
+            "PHONE_NUMBER_US": re.compile(r'\b\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b'),
         }
         for pii_type, pattern in simple_regex_patterns.items():
             for match in pattern.finditer(text):
