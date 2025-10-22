@@ -280,7 +280,7 @@ class Kansatsu:
         complex_regex_patterns = {
             "CREDIT_CARD": re.compile(r'\b(?:credit card|card|cc)[\s\w:;#-]*?((?:\d[ -]*?){13,16})\b', re.IGNORECASE),
             "MRN": re.compile(r'\b(mrn|medical record|patient id|medical number|medical id)[\s\w:;#-]*?(\w[\w-]*\w)\b', re.IGNORECASE),
-            "DATE_OF_BIRTH": re.compile(r'\b(dob|date of birth|birthday|birth date)[\s\w:;#-]*?(\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s\d{1,2},?\s\d{})\b', re.IGNORECASE),
+            "DATE_OF_BIRTH": re.compile(r'\b(dob|date of birth|birthday|birth date)[\s\w:;#-]*?(\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s\d{1,2},?\s\d{2,4})\b', re.IGNORECASE),
         }
         for pii_type, pattern in complex_regex_patterns.items():
             for match in pattern.finditer(text):
@@ -302,7 +302,7 @@ class Kansatsu:
                 span.add_event("rai_alert", {"type": pii_type, "match_text": redacted_text})
 
         simple_regex_patterns = {
-            "SSN": re.compile(r'\b\d{3}-\d{2}-\d{4}\b'),
+            "SSN": re.compile(r'\b\d{3}[-]\d{2}[-]\d{4}\b'),
             "EMAIL": re.compile(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'),
             "PHONE_NUMBER_US": re.compile(r'\b\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b'),
         }
