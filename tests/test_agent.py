@@ -4,14 +4,10 @@ import pytest
 import requests
 from unittest.mock import patch, call
 
-# Import the class we want to test from its specific module
 from kansatsu.agent import Kansatsu
 
-# Define a dummy URL that we'll use across tests
 DUMMY_URL = "http://localhost:9999/test"
 
-# CRITICAL FIX: We patch 'requests' where it is *used* (inside the agent module),
-# not where it is defined.
 @patch('kansatsu.agent.requests.post')
 def test_log_method_performance_sends_to_dashboard(mock_post):
     """
@@ -27,12 +23,9 @@ def test_log_method_performance_sends_to_dashboard(mock_post):
 
 @patch('kansatsu.agent.requests.post')
 def test_monitor_with_llm_sends_two_events(mock_post):
-    """
-    Tests that a decorated function with track_tokens=True sends both performance and usage events.
-    """
     obs = Kansatsu(service_name="test-service", dashboard_url=DUMMY_URL)
 
-    # Mock LLM response object (e.g., from OpenAI)
+    # Mock LLM response object (OpenAI)
     class MockUsage:
         prompt_tokens = 100
         completion_tokens = 200
@@ -46,10 +39,8 @@ def test_monitor_with_llm_sends_two_events(mock_post):
 
     llm_call_text()
 
-    # Assert that `post` was called twice
     assert mock_post.call_count == 2
 
-    # Check that both expected call types were made
     call_types = [c.kwargs['json']['type'] for c in mock_post.call_args_list]
     assert 'method_performance' in call_types
     assert 'method_llm_usage' in call_types
@@ -123,6 +114,5 @@ def test_dashboard_connection_error_is_handled_gracefully(mock_post, caplog):
     assert "Could not connect to dashboard" in caplog.text
     assert "Test connection failed" in caplog.text
 
-    # Call it again to make sure it only logs the warning once
     obs.log_interaction_time(1000)
     assert caplog.text.count("Could not connect to dashboard") == 1
