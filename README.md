@@ -64,8 +64,7 @@ import time
 import random
 from kansatsu import Kansatsu
 
-# 1. Initialize Kansatsu
-# It will automatically try to connect to the dashboard at http://127.0.0.1:9999/update
+# http://127.0.0.1:9999/update
 kansatsu = Kansatsu(service_name="my-llm-app", service_version="1.0.1")
 
 # A mock class to simulate an LLM API response
@@ -80,10 +79,8 @@ class MockLLMResponse:
                 self.total_tokens = p_tokens + c_tokens
         self.usage = Usage(prompt_tokens, completion_tokens)
 
-# 2. Add the decorator to your functions
 @kansatsu.monitor(span_name="llm_call_to_provider", track_tokens=True, log_io=True)
 def call_llm(prompt: str):
-    """A mock function that simulates calling an LLM."""
     print(f"Calling LLM with prompt: '{prompt}'")
     time.sleep(random.uniform(0.5, 1.5)) # Simulate network latency
     # Simulate a response with PII
@@ -96,12 +93,10 @@ def call_llm(prompt: str):
 
 @kansatsu.monitor(span_name="database_query")
 def query_database(query: str):
-    """A mock function that simulates a database query."""
     print(f"Querying DB with: '{query}'")
     time.sleep(random.uniform(0.1, 0.3))
     return {"status": "success", "rows": random.randint(1, 100)}
 
-# 3. Run your application logic
 if __name__ == "__main__":
     try:
         for i in range(10):
@@ -112,12 +107,12 @@ if __name__ == "__main__":
             llm_response = call_llm(prompt=f"This is my prompt number {i}")
             db_result = query_database(query="SELECT * FROM users;")
 
-            # Manually check the LLM output for PII
+            # Check the LLM output for PII
             rai_results = kansatsu.check_responsible_ai(llm_response.text, kansatsu.get_tracer().get_current_span())
             if rai_results["pii_found"]:
                 print(f"👺 PII Found: {rai_results['findings']}")
 
-            # Manually log end-to-end interaction time and user feedback
+            # Log end-to-end interaction time and user feedback
             end_time = time.perf_counter()
             kansatsu.log_interaction_time((end_time - start_time) * 1000)
             kansatsu.log_quality_feedback(random.randint(3, 5)) # Simulate a user rating of 3, 4, or 5
@@ -125,7 +120,6 @@ if __name__ == "__main__":
             time.sleep(2) # Wait before the next interaction
 
     finally:
-        # 4. Call shutdown to print the final summary
         kansatsu.shutdown()
 ```
 
