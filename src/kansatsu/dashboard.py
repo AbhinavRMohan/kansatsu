@@ -15,7 +15,6 @@ import logging
 import sys
 from . import __version__
 
-# --- Data Storage ---
 data_lock = threading.Lock()
 MAX_GRAPH_POINTS = 30
 app_data = {
@@ -27,13 +26,11 @@ app_data = {
     "session_ended": False,
 }
 
-# --- Flask Server & Dash App Initialization ---
 server = Flask(__name__)
 app = dash.Dash(__name__, server=server, external_stylesheets=[dbc.themes.DARKLY])
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR) # Suppress noisy Flask logs
 
-# --- Helper Functions ---
 def get_default_live_graph_data():
     return {
         'timestamps': deque(maxlen=MAX_GRAPH_POINTS),
@@ -41,7 +38,6 @@ def get_default_live_graph_data():
         'tokens': deque(maxlen=MAX_GRAPH_POINTS),
     }
 
-# --- API Endpoint to Receive Data ---
 @server.route('/update', methods=['POST'])
 def update_data():
     payload = request.json
@@ -84,7 +80,6 @@ def update_data():
             app_data["session_ended"] = True
     return jsonify(success=True)
 
-# --- App Layout ---
 def create_metric_card(title, value_id):
     return dbc.Card(
         dbc.CardBody([
@@ -135,7 +130,6 @@ app.layout = dbc.Container([
     html.Div(id='final-table-container')
 ], fluid=True)
 
-# --- Callbacks to Update the UI ---
 @app.callback(
     [
         Output('total-calls-value', 'children'),
@@ -218,7 +212,6 @@ def update_metrics(n):
         )
 
 def main():
-    """Main function to run the Dash server."""
     parser = argparse.ArgumentParser(description="Run the Kansatsu Dashboard.", add_help = False)
 
     parser.add_argument("--version", action = "store_true", help = "Show the version number and exit")
