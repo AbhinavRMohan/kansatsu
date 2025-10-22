@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kansatsu-observability"
-version = "0.1.3"
+version = "0.1.4"
 authors = [
   { name="Abhinav R Mohan", email="abhimohan6066@gmail.com" },
 ]
