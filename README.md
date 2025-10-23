@@ -12,7 +12,7 @@ Kansatsu (観察, Japanese for "observation") is a lightweight, end-to-end obser
 ## Features
 
 -   **Simple Integration**: Wrap any function with the `@kansatsu.monitor()` decorator to start collecting data.
--   **Live Dashboard**: Run `kansatsu-dashboard` to get a real-time view of your application's health.
+-   **Live Dashboard**: Run `kansatsu-dashboard` to get a real-time view of your application's stats.
 -   **Performance Metrics**: Automatically tracks execution time, call counts, and errors for each monitored function.
 -   **LLM Cost Tracking**: Automatically parses token usage from OpenAI, Google (Gemini), and Anthropic API responses.
 -   **Quality & RAI**: Includes helpers for logging user feedback and a built-in PII/PHI scanner to detect sensitive data.
